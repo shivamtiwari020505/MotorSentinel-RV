@@ -35,8 +35,11 @@ module tb_motorsentinel_feature_extractor;
     integer checks = 0;
     integer failures = 0;
     integer partial_index;
+    integer flush_index;
+    integer flush_wait_cycles;
     integer vector_index;
     logic main_phase = 1'b0;
+    logic output_flush_phase = 1'b0;
     logic saw_input_stall = 1'b0;
     logic saw_full_result_queue = 1'b0;
     logic [15:0] stalled_feature_mask = '0;
@@ -134,7 +137,7 @@ module tb_motorsentinel_feature_extractor;
                 check(queued_windows <= 2,
                       "result queue depth never exceeds two");
 
-            if (!main_phase && feature_valid) begin
+            if (!main_phase && !output_flush_phase && feature_valid) begin
                 failures = failures + 1;
                 $display("FAIL: partial window produced output (t=%0t)", $time);
             end
@@ -152,7 +155,7 @@ module tb_motorsentinel_feature_extractor;
                 end
             end
 
-            if (stall_tracking) begin
+            if (main_phase && stall_tracking) begin
                 check(feature_valid, "valid must remain asserted during stall");
                 check(feature_index === stalled_index,
                       "feature index remains stable during stall");
@@ -164,7 +167,7 @@ module tb_motorsentinel_feature_extractor;
                       "window sequence remains stable during stall");
             end
 
-            if (feature_valid && !feature_ready) begin
+            if (main_phase && feature_valid && !feature_ready) begin
                 stall_tracking = 1'b1;
                 stalled_index = feature_index;
                 stalled_data = feature_data;
@@ -246,9 +249,40 @@ module tb_motorsentinel_feature_extractor;
         sample_valid = 1'b0;
         enable = 1'b0;
         repeat (3) @(posedge clk);
+
+        // Build one complete result and disable while that result is stalled.
+        // The output interface must quiesce immediately, before the following
+        // rising edge synchronously flushes the queue.
         @(negedge clk);
         enable = 1'b1;
         feature_ready = 1'b0;
+        output_flush_phase = 1'b1;
+        for (flush_index = 0; flush_index < WINDOW_SIZE;
+             flush_index = flush_index + 1) begin
+            sample_valid = 1'b1;
+            drive_word(sample_memory[flush_index]);
+            while (!sample_ready)
+                @(negedge clk);
+            @(posedge clk);
+            @(negedge clk);
+        end
+        sample_valid = 1'b0;
+        flush_wait_cycles = 0;
+        while (!feature_valid && flush_wait_cycles < 1000) begin
+            @(negedge clk);
+            flush_wait_cycles = flush_wait_cycles + 1;
+        end
+        check(feature_valid,
+              "complete window reaches stalled output before disable test");
+        enable = 1'b0;
+        #1;
+        check(!feature_valid,
+              "disable immediately suppresses a queued valid output");
+        repeat (3) @(posedge clk);
+
+        @(negedge clk);
+        enable = 1'b1;
+        output_flush_phase = 1'b0;
         main_phase = 1'b1;
 
         while (cycle_count < 10000 &&

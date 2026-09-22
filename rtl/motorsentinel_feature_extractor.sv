@@ -113,7 +113,10 @@ module motorsentinel_feature_extractor (
                        result_space_available;
 
     assign sample_ready_o = enable_i && !finalize_pending_q;
-    assign feature_valid_o = (result_count_q != 0);
+    // Disable is an immediate interface quiesce as well as a synchronous
+    // state flush. Gating valid prevents a consumer from observing a transfer
+    // on the same edge that enable_i clears the queued window.
+    assign feature_valid_o = enable_i && (result_count_q != 0);
     assign feature_index_o = serializer_index_q;
     assign feature_last_o = feature_valid_o && (serializer_index_q == 4'd15);
     assign feature_data_o = feature_valid_o ?
@@ -434,13 +437,13 @@ module motorsentinel_feature_extractor (
                     end
 
                     pending_features_q[12] <=
-                        haar_energy_next[completed_bank][3] >> 13;
+                        haar_energy_next[completed_bank][3][44:13];
                     pending_features_q[13] <=
-                        haar_energy_next[completed_bank][2] >> 12;
+                        haar_energy_next[completed_bank][2][43:12];
                     pending_features_q[14] <=
-                        haar_energy_next[completed_bank][1] >> 11;
+                        haar_energy_next[completed_bank][1][42:11];
                     pending_features_q[15] <=
-                        haar_energy_next[completed_bank][0] >> 10;
+                        haar_energy_next[completed_bank][0][41:10];
                 end
 
                 if (hop_count_q == 7'd127) begin
