@@ -1,4 +1,4 @@
-"""Render the MotorSentinel-RV system block diagram (vector PDF + PNG).
+"""Render the MotorSentinel-RV system block diagram (PNG + Pillow-encoded PDF).
 
 The contest portal links to docs/MotorSentinel-RV_System_Block_Diagram.pdf on
 the main branch, so the output path and filename must never change; only the
