@@ -4,6 +4,9 @@ The contest portal links to docs/MotorSentinel-RV_System_Block_Diagram.pdf on
 the main branch, so the output path and filename must never change; only the
 content is regenerated. The proposal-stage original is preserved in
 docs/archive/.
+
+The figure is sized for GitHub's in-browser preview: large type, at most two
+short lines per block, and details left to docs/milestone-3.md.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib import font_manager  # noqa: E402
 from PIL import Image  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
@@ -27,7 +31,7 @@ RED = "#c0392b"
 RED_FILL = "#fbeaea"
 ORANGE = "#e8913a"
 ORANGE_FILL = "#fdf0e3"
-GREY = "#5f6b76"
+GREY = "#4f5b66"
 WHITE = "#ffffff"
 GOLD = "#b7791f"
 GOLD_FILL = "#fff7e6"
@@ -36,193 +40,181 @@ OUTPUT_DIR = Path(__file__).resolve().parents[1] / "docs"
 STEM = "MotorSentinel-RV_System_Block_Diagram"  # path linked from the portal
 PDF_DPI = 200
 
+TITLE_SIZE = 13.5
+LINE_SIZE = 10.5
+LINE_STEP = 0.030
+
+
+def _pick_font() -> None:
+    available = {font.name for font in font_manager.fontManager.ttflist}
+    for name in ("Segoe UI", "Calibri", "Arial"):
+        if name in available:
+            # DejaVu Sans supplies glyphs the UI font lacks (for example ✓).
+            matplotlib.rcParams["font.family"] = [name, "DejaVu Sans"]
+            return
+
 
 def box(ax, x, y, w, h, title, lines=(), edge=TEAL, fill=WHITE, planned=False,
-        title_size=11.5, line_size=8.6, radius=0.012, lw=1.8):
+        title_size=TITLE_SIZE, line_size=LINE_SIZE, lw=2.0):
     ax.add_patch(FancyBboxPatch(
-        (x, y), w, h, boxstyle=f"round,pad=0,rounding_size={radius}",
+        (x, y), w, h, boxstyle="round,pad=0,rounding_size=0.012",
         linewidth=lw, edgecolor=edge, facecolor=fill,
         linestyle=(0, (4, 3)) if planned else "solid", zorder=2))
-    count = len(lines)
-    title_y = y + h - 0.030 if count else y + h / 2
+    block = 0.036 + LINE_STEP * len(lines) if lines else 0.0
+    title_y = y + h / 2 + block / 2 - 0.012 if lines else y + h / 2
     ax.text(x + w / 2, title_y, title, ha="center", va="center",
             fontsize=title_size, fontweight="bold", color=NAVY, zorder=3)
     for index, line in enumerate(lines):
-        ax.text(x + w / 2, title_y - 0.034 - index * 0.026, line, ha="center",
-                va="center", fontsize=line_size, color=GREY, zorder=3)
+        ax.text(x + w / 2, title_y - 0.040 - index * LINE_STEP, line,
+                ha="center", va="center", fontsize=line_size, color=GREY, zorder=3)
 
 
-def arrow(ax, start, end, color=TEAL, lw=2.0, style="-|>", ls="solid",
-          connection="arc3,rad=0"):
+def arrow(ax, start, end, color=TEAL, lw=2.4, style="-|>", ls="solid"):
     ax.add_patch(FancyArrowPatch(
-        start, end, arrowstyle=style, mutation_scale=14, linewidth=lw,
-        color=color, linestyle=ls, connectionstyle=connection, zorder=4,
-        shrinkA=0, shrinkB=0))
+        start, end, arrowstyle=style, mutation_scale=16, linewidth=lw,
+        color=color, linestyle=ls, zorder=4, shrinkA=0, shrinkB=0))
 
 
-def label(ax, x, y, text, color=GREY, size=8.6, ha="center", weight="normal"):
+def line(ax, xs, ys, color, lw=2.4):
+    ax.plot(xs, ys, color=color, lw=lw, zorder=4, solid_capstyle="round")
+
+
+def label(ax, x, y, text, color=GREY, size=10, ha="center", weight="normal"):
     ax.text(x, y, text, ha=ha, va="center", fontsize=size, color=color,
             fontweight=weight, zorder=5,
-            bbox=dict(facecolor=WHITE, edgecolor="none", pad=1.2, alpha=0.92))
+            bbox=dict(facecolor=WHITE, edgecolor="none", pad=1.5, alpha=0.95))
+
+
+def region(ax, x, y, w, h, edge, fill, lw, title=None, title_color=None, size=14):
+    ax.add_patch(FancyBboxPatch((x, y), w, h,
+                                boxstyle="round,pad=0,rounding_size=0.016",
+                                linewidth=lw, edgecolor=edge, facecolor=fill, zorder=1))
+    if title:
+        ax.text(x + 0.018, y + h - 0.024, title, fontsize=size, fontweight="bold",
+                color=title_color or edge, va="center", zorder=3)
 
 
 def render(output_dir: Path) -> None:
-    fig = plt.figure(figsize=(16, 9.4), dpi=150)
+    _pick_font()
+    fig = plt.figure(figsize=(13, 7.64), dpi=150)
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(0, 1.6)
     ax.set_ylim(0, 0.94)
     ax.axis("off")
     fig.patch.set_facecolor(WHITE)
 
-    ax.text(0.04, 0.905, "MotorSentinel-RV System Architecture",
-            fontsize=21, fontweight="bold", color=NAVY, va="center")
-    ax.text(0.04, 0.868,
-            "Track 2 — PolarFire SoC Icicle Kit  |  sensor-bus guard + sensor-integrity "
-            "monitor + INT8 EdgeMatrix-RV autoencoder + hardware safety policy",
-            fontsize=10.5, color=GREY, va="center")
+    ax.text(0.02, 0.905, "MotorSentinel-RV System Architecture",
+            fontsize=23, fontweight="bold", color=NAVY, va="center")
+    ax.text(0.02, 0.862,
+            "Track 2 — PolarFire SoC Icicle Kit  |  attack-resilient sensing, "
+            "INT8 inference and hardware safe response",
+            fontsize=12, color=GREY, va="center")
 
-    # External sensors and attacker.
-    box(ax, 0.03, 0.62, 0.17, 0.11, "ADXL345", ("3-axis accelerometer", "800 S/s, 256 LSB/g"),
+    # External devices.
+    box(ax, 0.015, 0.57, 0.17, 0.12, "ADXL345", ("vibration sensor", "800 S/s over I2C"),
         edge=BLUE, fill=BLUE_FILL)
-    box(ax, 0.03, 0.44, 0.17, 0.11, "RP2040 PIO", ("attack emulator", "replay, freeze, NACK, bias"),
+    box(ax, 0.015, 0.38, 0.17, 0.12, "RP2040 PIO", ("attack emulator", "for live demos"),
         edge=ORANGE, fill=ORANGE_FILL, planned=True)
 
-    # PolarFire SoC outline and fabric region.
-    ax.add_patch(FancyBboxPatch((0.24, 0.035), 1.13, 0.80,
-                                boxstyle="round,pad=0,rounding_size=0.02",
-                                linewidth=2.6, edgecolor=NAVY, facecolor="#f7fafc", zorder=1))
-    ax.text(0.265, 0.81, "PolarFire SoC MPFS250T", fontsize=13, fontweight="bold",
-            color=NAVY, va="center")
-    ax.add_patch(FancyBboxPatch((0.26, 0.27), 1.09, 0.515,
-                                boxstyle="round,pad=0,rounding_size=0.015",
-                                linewidth=2.0, edgecolor=TEAL, facecolor=TEAL_FILL, zorder=1))
-    ax.text(0.28, 0.762, "FPGA FABRIC — deterministic data plane (motorsentinel_core_apb)",
-            fontsize=12.5, fontweight="bold", color=TEAL, va="center")
+    # PolarFire SoC, fabric and MSS regions.
+    region(ax, 0.21, 0.035, 1.155, 0.795, NAVY, "#f7fafc", 2.8,
+           "PolarFire SoC MPFS250T", NAVY, size=15)
+    region(ax, 0.225, 0.29, 1.125, 0.48, TEAL, TEAL_FILL, 2.2,
+           "FPGA FABRIC — deterministic data plane", TEAL, size=14)
+    region(ax, 0.225, 0.055, 1.125, 0.17, BLUE, BLUE_FILL, 2.2,
+           "RISC-V MSS — Linux control plane (outside the safety path)", BLUE, size=14)
 
-    # Acquisition stage.
-    box(ax, 0.275, 0.555, 0.165, 0.13, "I2C Acquisition", ("ADXL345 sequencer", "(next milestone)"),
-        edge=TEAL, planned=True)
-    box(ax, 0.275, 0.33, 0.165, 0.17, "Protocol Guard", ("2-FF line sync", "stuck SCL/SDA, stretch",
-        "NACK storm, rogue START", "missing-sample watchdog"))
+    # Fabric blocks: acquisition | integrity + features | model + inference | policy.
+    box(ax, 0.27, 0.56, 0.18, 0.12, "I2C Acquisition", ("ADXL345 sequencer", "next milestone"),
+        planned=True)
+    box(ax, 0.27, 0.35, 0.18, 0.12, "Protocol Guard", ("stuck bus, stalls", "NACK storm"))
+    box(ax, 0.50, 0.56, 0.22, 0.12, "Integrity Monitor", ("range · slew · frozen", "replay (rolling hash)"),
+        edge=GOLD, fill=GOLD_FILL)
+    box(ax, 0.50, 0.35, 0.22, 0.12, "Feature Extractor", ("16 features / window", "256 samples, 50% overlap"))
+    box(ax, 0.77, 0.56, 0.22, 0.12, "Model Store", ("CRC-32 verified", "fail-safe commit"))
+    box(ax, 0.77, 0.35, 0.22, 0.12, "EdgeMatrix-RV", ("8×8 INT8 systolic array", "16→8→16 autoencoder"))
+    box(ax, 1.06, 0.35, 0.24, 0.33, "Safety Policy", ("protocol faults", "attack evidence",
+        "learned anomaly", "latched, explicit re-arm"), edge=RED, fill=RED_FILL)
 
-    # Integrity monitor.
-    box(ax, 0.48, 0.555, 0.21, 0.17, "Sensor-Integrity Monitor",
-        ("range + slew limits", "frozen-value run detector",
-         "replay: 16-tap rolling hash", "1024-entry tag RAM"), edge=GOLD, fill=GOLD_FILL,
-        title_size=10.2)
-
-    # Feature + inference chain.
-    box(ax, 0.48, 0.33, 0.20, 0.17, "Feature Extractor",
-        ("256-sample / 128-hop windows", "mean, MS, p-p, exact ZCR",
-         "4 Haar band energies", "16 x 32-bit, bit-exact"))
-    box(ax, 0.73, 0.33, 0.14, 0.17, "INT8 Normalizer",
-        ("per-feature offset,", "scale, shift, sat8", "streams with the", "16-word transfer"),
-        title_size=10.2)
-    box(ax, 0.91, 0.33, 0.20, 0.17, "EdgeMatrix-RV",
-        ("8x8 INT8 systolic array", "16 -> 8 -> 16 autoencoder", "4 weight tiles, ReLU",
-         "L1 score in 74 cycles"))
-    box(ax, 0.91, 0.555, 0.20, 0.125, "Model Store",
-        ("122-word image, CRC-32", "format + range checks", "fail-safe atomic commit"))
-
-    # Safety policy.
-    box(ax, 1.16, 0.33, 0.17, 0.39, "Safety Policy", ("verified kernel, unchanged", "",
-        "protocol faults", "integrity faults", "learned anomaly", "(2-window confirm)",
-        "latched provenance", "healthy-window recovery", "explicit re-arm"),
+    # Motor and results.
+    box(ax, 1.40, 0.43, 0.185, 0.15, "Motor Driver", ("+ DC motor", "fail-safe off"),
         edge=RED, fill=RED_FILL)
-
-    # Motor.
-    box(ax, 1.42, 0.44, 0.16, 0.17, "Motor Driver", ("+ DC motor", "active-high enable,", "pull-down fail-safe"),
-        edge=RED, fill=RED_FILL)
-
-    # MSS region.
-    ax.add_patch(FancyBboxPatch((0.26, 0.055), 1.09, 0.17,
-                                boxstyle="round,pad=0,rounding_size=0.015",
-                                linewidth=2.0, edgecolor=BLUE, facecolor=BLUE_FILL, zorder=1))
-    ax.text(0.28, 0.203, "RISC-V MSS — Linux control plane (not in the safety path)",
-            fontsize=12.5, fontweight="bold", color=BLUE, va="center")
-    box(ax, 0.30, 0.075, 0.22, 0.095, "UIO driver + model loader", ("CRC-checked image, thresholds",),
-        edge=BLUE, planned=True, title_size=9.8)
-    box(ax, 0.56, 0.075, 0.22, 0.095, "Event service + dashboard", ("fault provenance, scores, features",),
-        edge=BLUE, planned=True, title_size=9.8)
-    box(ax, 0.82, 0.075, 0.22, 0.095, "CPU baseline + replay", ("same data via APB injection",),
-        edge=BLUE, planned=True, title_size=9.8)
-    box(ax, 1.08, 0.075, 0.24, 0.095, "PAC1934 power monitor", ("CPU vs FPGA energy per window",),
-        edge=BLUE, planned=True, title_size=9.8)
-
-    # Data arrows.
-    arrow(ax, (0.20, 0.675), (0.275, 0.640), color=BLUE)
-    label(ax, 0.238, 0.705, "I2C 400 kHz", BLUE, size=8.2)
-    arrow(ax, (0.20, 0.495), (0.275, 0.600), color=ORANGE, ls=(0, (4, 3)))
-    arrow(ax, (0.3575, 0.555), (0.3575, 0.500), color=TEAL)
-    label(ax, 0.395, 0.528, "SCL/SDA", TEAL, size=8)
-    arrow(ax, (0.44, 0.640), (0.48, 0.640), color=TEAL)
-    ax.plot([0.46, 0.46], [0.640, 0.415], color=TEAL, lw=2.0, zorder=4)
-    arrow(ax, (0.46, 0.415), (0.48, 0.415), color=TEAL)
-    label(ax, 0.46, 0.668, "X/Y/Z", TEAL, size=8)
-    arrow(ax, (0.68, 0.415), (0.73, 0.415), color=TEAL)
-    arrow(ax, (0.87, 0.415), (0.91, 0.415), color=TEAL)
-    label(ax, 0.89, 0.448, "q[16]", TEAL, size=8)
-    arrow(ax, (1.01, 0.555), (1.01, 0.500), color=TEAL)
-    label(ax, 1.048, 0.528, "weights", TEAL, size=8)
-    arrow(ax, (1.11, 0.415), (1.16, 0.415), color=TEAL)
-    label(ax, 1.135, 0.448, "score", TEAL, size=8)
-    ax.plot([0.69, 0.71, 0.71], [0.640, 0.640, 0.705], color=GOLD, lw=2.0, zorder=4)
-    ax.plot([0.71, 1.14], [0.705, 0.705], color=GOLD, lw=2.0, zorder=4)
-    ax.plot([1.14, 1.14], [0.705, 0.660], color=GOLD, lw=2.0, zorder=4)
-    arrow(ax, (1.14, 0.660), (1.16, 0.660), color=GOLD)
-    label(ax, 0.80, 0.705, "range / slew / frozen / replay", GOLD, size=8.4, weight="bold")
-    ax.plot([0.3575, 0.3575], [0.330, 0.300], color=RED, lw=2.0, zorder=4)
-    ax.plot([0.3575, 1.245], [0.300, 0.300], color=RED, lw=2.0, zorder=4)
-    arrow(ax, (1.245, 0.300), (1.245, 0.330), color=RED)
-    label(ax, 0.62, 0.300, "protocol faults (6 causes)", RED, size=8.4)
-    arrow(ax, (1.33, 0.525), (1.42, 0.525), color=RED, lw=3.2)
-    label(ax, 1.375, 0.565, "safe disable", RED, size=9, weight="bold")
-
-    # Control-plane link.
-    arrow(ax, (0.41, 0.225), (0.41, 0.270), color=BLUE, style="<|-|>")
-    label(ax, 0.43, 0.245,
-          "APB3 via FIC3, one 256-byte slot: 0x00-0x3F safety kernel, 0x40-0xFF data plane  |  level IRQ to MSS",
-          BLUE, size=8.6, ha="left")
-
-    # Verified results panel.
-    ax.add_patch(FancyBboxPatch((1.385, 0.64), 0.21, 0.195,
+    ax.add_patch(FancyBboxPatch((1.385, 0.625), 0.21, 0.205,
                                 boxstyle="round,pad=0,rounding_size=0.012",
-                                linewidth=1.6, edgecolor=NAVY, facecolor=WHITE, zorder=2))
-    ax.text(1.49, 0.812, "Verified in RTL simulation", ha="center", fontsize=9.2,
+                                linewidth=2.0, edgecolor=NAVY, facecolor=WHITE, zorder=2))
+    ax.text(1.49, 0.800, "Verified in simulation", ha="center", fontsize=11.5,
             fontweight="bold", color=NAVY, va="center")
-    results = (
-        "9/9 attack scenarios pass",
-        "every score bit-exact vs Python",
-        "decision 348 cycles (6.96 us)",
-        "frozen sensor trip: 38.75 ms",
-        "spike trip: 1 sample (1.25 ms)",
-        "mechanical faults: 320 ms",
-    )
-    for index, line in enumerate(results):
-        ax.text(1.393, 0.778 - index * 0.024, "• " + line, fontsize=7.8,
+    for index, text in enumerate((
+        "9/9 attacks detected",
+        "0 false trips",
+        "decision in 6.96 µs",
+        "bit-exact vs Python",
+    )):
+        ax.text(1.400, 0.758 - index * 0.032, "✓  " + text, fontsize=10.5,
                 color=GREY, va="center")
 
+    # MSS blocks.
+    for x, title, sub in (
+        (0.255, "Linux UIO driver", "loads verified model"),
+        (0.535, "Event dashboard", "faults, scores, features"),
+        (0.815, "CPU baseline", "same data via APB"),
+        (1.095, "PAC1934 monitor", "energy per window"),
+    ):
+        box(ax, x, 0.072, 0.235, 0.095, title, (sub,), edge=BLUE, planned=True,
+            title_size=12, line_size=10)
+
+    # Data flow.
+    arrow(ax, (0.185, 0.63), (0.27, 0.62), color=BLUE)
+    arrow(ax, (0.185, 0.44), (0.27, 0.585), color=ORANGE, ls=(0, (4, 3)))
+    arrow(ax, (0.36, 0.56), (0.36, 0.47))
+    label(ax, 0.40, 0.515, "SCL/SDA", TEAL, size=9.5)
+    arrow(ax, (0.45, 0.62), (0.50, 0.62))
+    line(ax, [0.475, 0.475], [0.62, 0.41], TEAL)
+    arrow(ax, (0.475, 0.41), (0.50, 0.41))
+    label(ax, 0.475, 0.52, "X/Y/Z", TEAL, size=9.5)
+    arrow(ax, (0.72, 0.41), (0.77, 0.41))
+    arrow(ax, (0.88, 0.56), (0.88, 0.47))
+    label(ax, 0.925, 0.515, "weights", TEAL, size=9.5)
+    arrow(ax, (0.99, 0.41), (1.06, 0.41))
+    label(ax, 1.025, 0.445, "score", TEAL, size=9.5)
+
+    # Attack evidence (gold) and protocol faults (red) into the policy.
+    line(ax, [0.72, 0.745, 0.745], [0.62, 0.62, 0.715], GOLD)
+    line(ax, [0.745, 1.03], [0.715, 0.715], GOLD)
+    line(ax, [1.03, 1.03], [0.715, 0.64], GOLD)
+    arrow(ax, (1.03, 0.64), (1.06, 0.64), color=GOLD)
+    label(ax, 0.87, 0.715, "attack evidence", GOLD, size=10, weight="bold")
+    line(ax, [0.36, 0.36], [0.35, 0.315], RED)
+    line(ax, [0.36, 1.18], [0.315, 0.315], RED)
+    arrow(ax, (1.18, 0.315), (1.18, 0.35), color=RED)
+    label(ax, 0.64, 0.315, "protocol faults", RED, size=10)
+
+    # Safety response and control plane.
+    arrow(ax, (1.30, 0.505), (1.40, 0.505), color=RED, lw=3.6)
+    label(ax, 1.35, 0.555, "safe\ndisable", RED, size=10.5, weight="bold")
+    arrow(ax, (0.36, 0.225), (0.36, 0.29), color=BLUE, style="<|-|>")
+    label(ax, 0.385, 0.258, "APB control + IRQ (no Linux in the trip path)", BLUE,
+          size=10, ha="left")
+
     # Legend.
-    ax.plot([0.04, 0.08], [0.012, 0.012], color=TEAL, lw=2)
-    ax.text(0.085, 0.012, "implemented and verified", fontsize=8.6, color=GREY, va="center")
-    ax.plot([0.30, 0.34], [0.012, 0.012], color=TEAL, lw=2, ls=(0, (4, 3)))
-    ax.text(0.345, 0.012, "planned / board integration", fontsize=8.6, color=GREY, va="center")
-    ax.plot([0.58, 0.62], [0.012, 0.012], color=RED, lw=2)
-    ax.text(0.625, 0.012, "independent hardware safety response", fontsize=8.6, color=GREY, va="center")
-    ax.plot([0.92, 0.96], [0.012, 0.012], color=GOLD, lw=2)
-    ax.text(0.965, 0.012, "sensor-integrity evidence", fontsize=8.6, color=GREY, va="center")
+    legend = (
+        (0.02, TEAL, "solid", "implemented and verified"),
+        (0.33, TEAL, (0, (4, 3)), "planned"),
+        (0.50, RED, "solid", "hardware safety response"),
+        (0.83, GOLD, "solid", "sensor-attack evidence"),
+    )
+    for x, color, style, text in legend:
+        ax.plot([x, x + 0.04], [0.014, 0.014], color=color, lw=2.4, ls=style)
+        ax.text(x + 0.048, 0.014, text, fontsize=10, color=GREY, va="center")
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / f"{STEM}.png", dpi=150, facecolor=WHITE)
+    fig.savefig(output_dir / f"{STEM}.png", dpi=PDF_DPI, facecolor=WHITE)
     # GitHub's PDF viewer fails on matplotlib's vector PDF, so the linked PDF
     # uses the same Pillow raster encoding as the original proposal diagram.
-    hires = output_dir / f"{STEM}_hires.png"
-    fig.savefig(hires, dpi=PDF_DPI, facecolor=WHITE)
     plt.close(fig)
-    with Image.open(hires) as image:
+    with Image.open(output_dir / f"{STEM}.png") as image:
         image.convert("RGB").save(output_dir / f"{STEM}.pdf", "PDF",
-                                  resolution=float(PDF_DPI), quality=95)
-    hires.unlink()
+                                  resolution=float(PDF_DPI), quality=90)
 
 
 def main() -> None:
