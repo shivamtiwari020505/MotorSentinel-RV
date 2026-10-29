@@ -14,8 +14,8 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-matplotlib.rcParams["pdf.fonttype"] = 42  # embed TrueType text, not Type 3
 import matplotlib.pyplot as plt  # noqa: E402
+from PIL import Image  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
 NAVY = "#17324d"
@@ -34,6 +34,7 @@ GOLD_FILL = "#fff7e6"
 
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "docs"
 STEM = "MotorSentinel-RV_System_Block_Diagram"  # path linked from the portal
+PDF_DPI = 200
 
 
 def box(ax, x, y, w, h, title, lines=(), edge=TEAL, fill=WHITE, planned=False,
@@ -213,8 +214,15 @@ def render(output_dir: Path) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_dir / f"{STEM}.png", dpi=150, facecolor=WHITE)
-    fig.savefig(output_dir / f"{STEM}.pdf", facecolor=WHITE)
+    # GitHub's PDF viewer fails on matplotlib's vector PDF, so the linked PDF
+    # uses the same Pillow raster encoding as the original proposal diagram.
+    hires = output_dir / f"{STEM}_hires.png"
+    fig.savefig(hires, dpi=PDF_DPI, facecolor=WHITE)
     plt.close(fig)
+    with Image.open(hires) as image:
+        image.convert("RGB").save(output_dir / f"{STEM}.pdf", "PDF",
+                                  resolution=float(PDF_DPI), quality=95)
+    hires.unlink()
 
 
 def main() -> None:
