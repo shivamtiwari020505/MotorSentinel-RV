@@ -30,7 +30,8 @@ module motorsentinel_guard_apb #(
 
     output logic        motor_enable_o,
     output logic        fault_led_o,
-    output logic        irq_o
+    output logic        irq_o,
+    output logic        enable_o
 );
 
     localparam logic [7:0] REG_ID_VERSION     = 8'h00;
@@ -82,6 +83,7 @@ module motorsentinel_guard_apb #(
     assign PREADY = 1'b1;
     assign PSLVERR = 1'b0;
     assign fault_led_o = trip;
+    assign enable_o = enable_q;
     assign irq_o = |(irq_status_q & irq_enable_q);
 
     motorsentinel_protocol_guard #(

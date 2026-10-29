@@ -6,75 +6,76 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $repoRoot "build"
-$guardImage = Join-Path $buildDir "tb_motorsentinel_guard.vvp"
-$featureImage = Join-Path $buildDir "tb_motorsentinel_feature_extractor.vvp"
 
 New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
+function Invoke-Checked {
+    param([string]$Description, [scriptblock]$Command)
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE"
+    }
+}
+
+function Invoke-RtlTest {
+    param(
+        [string]$Top,
+        [string[]]$Sources,
+        [string[]]$ExtraArgs = @()
+    )
+    $image = Join-Path $buildDir "$Top.vvp"
+    $compileArgs = @("-g2012", "-Wall") + $ExtraArgs
+    if ($Waves) {
+        $compileArgs += "-DDUMP_WAVES"
+    }
+    $compileArgs += @("-s", $Top, "-o", $image)
+    $paths = $Sources | ForEach-Object { Join-Path $repoRoot $_ }
+
+    Invoke-Checked "$Top compilation" { & iverilog @compileArgs @paths }
+    Push-Location $repoRoot
+    try {
+        Invoke-Checked "$Top simulation" { & vvp $image }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 Push-Location $repoRoot
 try {
-    & python -m unittest discover -s tests -v
-    if ($LASTEXITCODE -ne 0) {
-        throw "Python feature-model tests failed with exit code $LASTEXITCODE"
+    Invoke-Checked "Python model tests" { & python -m unittest discover -s tests -v }
+    Invoke-Checked "Feature-vector generation" {
+        & python tools/generate_feature_vectors.py --output-dir $buildDir
     }
-
-    & python tools/generate_feature_vectors.py --output-dir $buildDir
-    if ($LASTEXITCODE -ne 0) {
-        throw "Feature-vector generation failed with exit code $LASTEXITCODE"
+    Invoke-Checked "System-vector generation" {
+        & python tools/generate_system_vectors.py --output-dir $buildDir
     }
 }
 finally {
     Pop-Location
 }
 
-$iverilogArgs = @("-g2012", "-Wall")
-if ($Waves) {
-    $iverilogArgs += "-DDUMP_WAVES"
-}
-$guardArgs = $iverilogArgs + @("-s", "tb_motorsentinel_guard", "-o", $guardImage)
-
-& iverilog @guardArgs `
-    (Join-Path $repoRoot "rtl/motorsentinel_protocol_guard.sv") `
-    (Join-Path $repoRoot "rtl/motorsentinel_safety_policy.sv") `
-    (Join-Path $repoRoot "rtl/motorsentinel_guard_apb.sv") `
-    (Join-Path $repoRoot "tb/tb_motorsentinel_guard.sv")
-
-if ($LASTEXITCODE -ne 0) {
-    throw "Icarus Verilog compilation failed with exit code $LASTEXITCODE"
-}
-
-Push-Location $repoRoot
-try {
-    & vvp $guardImage
-    if ($LASTEXITCODE -ne 0) {
-        throw "Safety-kernel simulation failed with exit code $LASTEXITCODE"
-    }
-}
-finally {
-    Pop-Location
-}
-
-$featureArgs = $iverilogArgs + @(
-    "-Wno-sensitivity-entire-array",
-    "-s", "tb_motorsentinel_feature_extractor",
-    "-o", $featureImage
+$guardRtl = @(
+    "rtl/motorsentinel_protocol_guard.sv",
+    "rtl/motorsentinel_safety_policy.sv",
+    "rtl/motorsentinel_guard_apb.sv"
 )
+$featureRtl = @("rtl/motorsentinel_feature_extractor.sv")
+$engineRtl = @(
+    "rtl/edgematrix_pe.sv",
+    "rtl/edgematrix_array.sv",
+    "rtl/edgematrix_autoencoder.sv",
+    "rtl/motorsentinel_model_store.sv",
+    "rtl/motorsentinel_inference.sv"
+)
+$coreRtl = $engineRtl + @("rtl/motorsentinel_integrity_monitor.sv") +
+    $featureRtl + $guardRtl + @("rtl/motorsentinel_core_apb.sv")
+$quiet = @("-Wno-sensitivity-entire-array")
 
-& iverilog @featureArgs `
-    (Join-Path $repoRoot "rtl/motorsentinel_feature_extractor.sv") `
-    (Join-Path $repoRoot "tb/tb_motorsentinel_feature_extractor.sv")
-
-if ($LASTEXITCODE -ne 0) {
-    throw "Feature-extractor compilation failed with exit code $LASTEXITCODE"
-}
-
-Push-Location $repoRoot
-try {
-    & vvp $featureImage
-    if ($LASTEXITCODE -ne 0) {
-        throw "Feature-extractor simulation failed with exit code $LASTEXITCODE"
-    }
-}
-finally {
-    Pop-Location
-}
+Invoke-RtlTest "tb_motorsentinel_guard" ($guardRtl + @("tb/tb_motorsentinel_guard.sv"))
+Invoke-RtlTest "tb_motorsentinel_feature_extractor" `
+    ($featureRtl + @("tb/tb_motorsentinel_feature_extractor.sv")) $quiet
+Invoke-RtlTest "tb_edgematrix_inference" `
+    ($engineRtl + @("tb/tb_edgematrix_inference.sv")) $quiet
+Invoke-RtlTest "tb_motorsentinel_core" `
+    ($coreRtl + @("tb/tb_motorsentinel_core.sv")) $quiet

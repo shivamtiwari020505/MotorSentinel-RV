@@ -75,7 +75,8 @@ module tb_motorsentinel_guard;
         .internal_fault_i     (internal_fault),
         .motor_enable_o       (motor_enable),
         .fault_led_o          (fault_led),
-        .irq_o                (irq)
+        .irq_o                (irq),
+        .enable_o             ()
     );
 
     task automatic check(input logic condition, input string message);

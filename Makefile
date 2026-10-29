@@ -2,11 +2,23 @@ GUARD_RTL := rtl/motorsentinel_protocol_guard.sv \
 	rtl/motorsentinel_safety_policy.sv \
 	rtl/motorsentinel_guard_apb.sv
 FEATURE_RTL := rtl/motorsentinel_feature_extractor.sv
+ENGINE_RTL := rtl/edgematrix_pe.sv \
+	rtl/edgematrix_array.sv \
+	rtl/edgematrix_autoencoder.sv \
+	rtl/motorsentinel_model_store.sv \
+	rtl/motorsentinel_inference.sv
+CORE_RTL := $(ENGINE_RTL) \
+	rtl/motorsentinel_integrity_monitor.sv \
+	$(FEATURE_RTL) \
+	$(GUARD_RTL) \
+	rtl/motorsentinel_core_apb.sv
 PYTHON ?= python3
+IVERILOG := iverilog -g2012 -Wall -Wno-sensitivity-entire-array
 
-.PHONY: test python-test guard-test feature-test feature-vectors waves feature-waves clean
+.PHONY: test python-test guard-test feature-test inference-test core-test \
+	feature-vectors system-vectors waves feature-waves core-waves train clean
 
-test: python-test guard-test feature-test
+test: python-test guard-test feature-test inference-test core-test
 
 python-test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -18,8 +30,22 @@ feature-vectors:
 	mkdir -p build
 	$(PYTHON) tools/generate_feature_vectors.py --output-dir build
 
+system-vectors:
+	mkdir -p build
+	$(PYTHON) tools/generate_system_vectors.py --output-dir build
+
 feature-test: feature-vectors build/tb_motorsentinel_feature_extractor.vvp
 	vvp build/tb_motorsentinel_feature_extractor.vvp
+
+inference-test: system-vectors build/tb_edgematrix_inference.vvp
+	vvp build/tb_edgematrix_inference.vvp
+
+core-test: system-vectors build/tb_motorsentinel_core.vvp
+	vvp build/tb_motorsentinel_core.vvp
+
+# Offline: retrains the committed model (requires NumPy).
+train:
+	$(PYTHON) tools/train_autoencoder.py
 
 waves:
 	mkdir -p build
@@ -28,8 +54,13 @@ waves:
 
 feature-waves: feature-vectors
 	mkdir -p build
-	iverilog -g2012 -Wall -Wno-sensitivity-entire-array -DDUMP_WAVES -s tb_motorsentinel_feature_extractor -o build/tb_motorsentinel_feature_extractor.vvp $(FEATURE_RTL) tb/tb_motorsentinel_feature_extractor.sv
+	$(IVERILOG) -DDUMP_WAVES -s tb_motorsentinel_feature_extractor -o build/tb_motorsentinel_feature_extractor.vvp $(FEATURE_RTL) tb/tb_motorsentinel_feature_extractor.sv
 	vvp build/tb_motorsentinel_feature_extractor.vvp
+
+core-waves: system-vectors
+	mkdir -p build
+	$(IVERILOG) -DDUMP_WAVES -s tb_motorsentinel_core -o build/tb_motorsentinel_core.vvp $(CORE_RTL) tb/tb_motorsentinel_core.sv
+	vvp build/tb_motorsentinel_core.vvp
 
 build/tb_motorsentinel_guard.vvp: $(GUARD_RTL) tb/tb_motorsentinel_guard.sv
 	mkdir -p build
@@ -37,7 +68,15 @@ build/tb_motorsentinel_guard.vvp: $(GUARD_RTL) tb/tb_motorsentinel_guard.sv
 
 build/tb_motorsentinel_feature_extractor.vvp: $(FEATURE_RTL) tb/tb_motorsentinel_feature_extractor.sv
 	mkdir -p build
-	iverilog -g2012 -Wall -Wno-sensitivity-entire-array -s tb_motorsentinel_feature_extractor -o $@ $(FEATURE_RTL) tb/tb_motorsentinel_feature_extractor.sv
+	$(IVERILOG) -s tb_motorsentinel_feature_extractor -o $@ $(FEATURE_RTL) tb/tb_motorsentinel_feature_extractor.sv
+
+build/tb_edgematrix_inference.vvp: $(ENGINE_RTL) tb/tb_edgematrix_inference.sv
+	mkdir -p build
+	$(IVERILOG) -s tb_edgematrix_inference -o $@ $(ENGINE_RTL) tb/tb_edgematrix_inference.sv
+
+build/tb_motorsentinel_core.vvp: $(CORE_RTL) tb/tb_motorsentinel_core.sv
+	mkdir -p build
+	$(IVERILOG) -s tb_motorsentinel_core -o $@ $(CORE_RTL) tb/tb_motorsentinel_core.sv
 
 clean:
 	rm -rf build

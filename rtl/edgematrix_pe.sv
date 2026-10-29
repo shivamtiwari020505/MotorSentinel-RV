@@ -1,0 +1,62 @@
+`timescale 1ns/1ps
+
+// Imported from SystolicForge (https://github.com/shivamtiwari020505/systolicforge-npu),
+// the same author's verified MIT-licensed INT8 systolic NPU. Only the module
+// name is changed so the EdgeMatrix-RV engine owns a stable namespace.
+//
+// MIT License, Copyright (c) 2026 SystolicForge authors. Permission is granted,
+// free of charge, to use, copy, modify, merge, publish, distribute, sublicense
+// and/or sell copies, provided this notice is included. THE SOFTWARE IS
+// PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+module edgematrix_pe #(
+    parameter integer DATA_W = 8,
+    parameter integer ACC_W  = 32,
+    parameter bit     TOP_ROW = 1'b0
+) (
+    input  logic                         clk,
+    input  logic                         rst_n,
+    input  logic                         weight_load,
+    input  logic signed [DATA_W-1:0]     weight_in,
+    input  logic signed [DATA_W-1:0]     activation_in,
+    input  logic                         activation_valid_in,
+    input  logic signed [ACC_W-1:0]      psum_in,
+    input  logic                         psum_valid_in,
+    output logic signed [DATA_W-1:0]     activation_out,
+    output logic                         activation_valid_out,
+    output logic signed [ACC_W-1:0]      psum_out,
+    output logic                         psum_valid_out
+);
+
+    logic signed [DATA_W-1:0] weight_q;
+    wire signed [(2*DATA_W)-1:0] product = activation_in * weight_q;
+    wire signed [ACC_W-1:0] product_ext =
+        {{(ACC_W-(2*DATA_W)){product[2*DATA_W-1]}}, product};
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            weight_q            <= '0;
+            activation_out      <= '0;
+            activation_valid_out <= 1'b0;
+            psum_out            <= '0;
+            psum_valid_out      <= 1'b0;
+        end else begin
+            if (weight_load)
+                weight_q <= weight_in;
+
+            activation_out       <= activation_in;
+            activation_valid_out <= activation_valid_in;
+
+            if (TOP_ROW) begin
+                psum_valid_out <= activation_valid_in;
+                if (activation_valid_in)
+                    psum_out <= product_ext;
+            end else begin
+                psum_valid_out <= activation_valid_in && psum_valid_in;
+                if (activation_valid_in && psum_valid_in)
+                    psum_out <= psum_in + product_ext;
+            end
+        end
+    end
+
+endmodule
