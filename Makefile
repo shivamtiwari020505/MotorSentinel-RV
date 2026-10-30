@@ -12,13 +12,17 @@ CORE_RTL := $(ENGINE_RTL) \
 	$(FEATURE_RTL) \
 	$(GUARD_RTL) \
 	rtl/motorsentinel_core_apb.sv
+READER_RTL := rtl/motorsentinel_adxl345_reader.sv
+TOP_RTL := $(CORE_RTL) $(READER_RTL) rtl/motorsentinel_top.sv
+SENSOR_MODEL := tb/adxl345_i2c_model.sv
 PYTHON ?= python3
 IVERILOG := iverilog -g2012 -Wall -Wno-sensitivity-entire-array
 
 .PHONY: test python-test guard-test feature-test inference-test core-test \
-	feature-vectors system-vectors waves feature-waves core-waves train clean
+	reader-test top-test feature-vectors system-vectors waves feature-waves \
+	core-waves train clean
 
-test: python-test guard-test feature-test inference-test core-test
+test: python-test guard-test feature-test inference-test core-test reader-test top-test
 
 python-test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -42,6 +46,12 @@ inference-test: system-vectors build/tb_edgematrix_inference.vvp
 
 core-test: system-vectors build/tb_motorsentinel_core.vvp
 	vvp build/tb_motorsentinel_core.vvp
+
+reader-test: build/tb_adxl345_reader.vvp
+	vvp build/tb_adxl345_reader.vvp
+
+top-test: system-vectors build/tb_motorsentinel_top.vvp
+	vvp build/tb_motorsentinel_top.vvp
 
 # Offline: retrains the committed model (requires NumPy).
 train:
@@ -77,6 +87,14 @@ build/tb_edgematrix_inference.vvp: $(ENGINE_RTL) tb/tb_edgematrix_inference.sv
 build/tb_motorsentinel_core.vvp: $(CORE_RTL) tb/tb_motorsentinel_core.sv
 	mkdir -p build
 	$(IVERILOG) -s tb_motorsentinel_core -o $@ $(CORE_RTL) tb/tb_motorsentinel_core.sv
+
+build/tb_adxl345_reader.vvp: $(READER_RTL) $(SENSOR_MODEL) tb/tb_adxl345_reader.sv
+	mkdir -p build
+	$(IVERILOG) -s tb_adxl345_reader -o $@ $(READER_RTL) $(SENSOR_MODEL) tb/tb_adxl345_reader.sv
+
+build/tb_motorsentinel_top.vvp: $(TOP_RTL) $(SENSOR_MODEL) tb/tb_motorsentinel_top.sv
+	mkdir -p build
+	$(IVERILOG) -s tb_motorsentinel_top -o $@ $(TOP_RTL) $(SENSOR_MODEL) tb/tb_motorsentinel_top.sv
 
 clean:
 	rm -rf build

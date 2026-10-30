@@ -43,7 +43,13 @@ module motorsentinel_core_apb #(
 
     output logic               motor_enable_o,
     output logic               fault_led_o,
-    output logic               irq_o
+    output logic               irq_o,
+
+    // Acquisition block control and status (motorsentinel_top).
+    output logic               enable_o,
+    output logic               acq_use_drdy_o,
+    input  logic [31:0]        acq_status_i,
+    input  logic [31:0]        acq_samples_i
 );
 
     localparam logic [7:0] REG_CORE_ID          = 8'h40;
@@ -66,6 +72,8 @@ module motorsentinel_core_apb #(
     localparam logic [7:0] REG_Q_BASE           = 8'hc0;  // 4 words
     localparam logic [7:0] REG_Y_BASE           = 8'hd0;  // 4 words
     localparam logic [7:0] REG_H_BASE           = 8'he0;  // 2 words
+    localparam logic [7:0] REG_ACQ_STATUS       = 8'he8;
+    localparam logic [7:0] REG_ACQ_SAMPLES      = 8'hec;
 
     // ------------------------------------------------------------------
     // APB split
@@ -85,6 +93,7 @@ module motorsentinel_core_apb #(
     // Extension registers
     // ------------------------------------------------------------------
     logic        inject_mode_q;
+    logic        acq_use_drdy_q;
     logic [15:0] inject_x_q;
     logic [15:0] inject_y_q;
     logic [31:0] expected_crc_q;
@@ -133,6 +142,8 @@ module motorsentinel_core_apb #(
     end
 
     assign sample_ready_o = !inject_mode_q && datapath_ready;
+    assign enable_o = enable;
+    assign acq_use_drdy_o = acq_use_drdy_q;
     wire sample_fire = sample_valid && datapath_ready;
     wire sample_overrun = enable && sample_valid && !datapath_ready;
 
@@ -320,6 +331,7 @@ module motorsentinel_core_apb #(
     always_ff @(posedge PCLK or negedge PRESETn) begin
         if (!PRESETn) begin
             inject_mode_q      <= 1'b0;
+            acq_use_drdy_q     <= 1'b1;
             inject_x_q         <= '0;
             inject_y_q         <= '0;
             expected_crc_q     <= '0;
@@ -337,7 +349,10 @@ module motorsentinel_core_apb #(
         end else begin
             if (ext_write) begin
                 case (PADDR)
-                    REG_CORE_CONTROL: inject_mode_q <= PWDATA[0];
+                    REG_CORE_CONTROL: begin
+                        inject_mode_q  <= PWDATA[0];
+                        acq_use_drdy_q <= PWDATA[1];
+                    end
                     REG_INJECT_XY: begin
                         inject_x_q <= PWDATA[15:0];
                         inject_y_q <= PWDATA[31:16];
@@ -401,7 +416,7 @@ module motorsentinel_core_apb #(
         else begin
             case (PADDR)
                 REG_CORE_ID:          ext_prdata = 32'h4d53_0300; // "MS", data plane v3.0
-                REG_CORE_CONTROL:     ext_prdata = {31'd0, inject_mode_q};
+                REG_CORE_CONTROL:     ext_prdata = {30'd0, acq_use_drdy_q, inject_mode_q};
                 REG_INJECT_XY:        ext_prdata = {inject_y_q, inject_x_q};
                 REG_MODEL_CRC:        ext_prdata = expected_crc_q;
                 REG_MODEL_STATUS:     ext_prdata = {8'd0, model_words, 3'd0,
@@ -420,6 +435,8 @@ module motorsentinel_core_apb #(
                                                     queued_windows,
                                                     inference_busy, frozen_active,
                                                     4'd0, score};
+                REG_ACQ_STATUS:       ext_prdata = acq_status_i;
+                REG_ACQ_SAMPLES:      ext_prdata = acq_samples_i;
                 default:              ext_prdata = 32'h0000_0000;
             endcase
         end

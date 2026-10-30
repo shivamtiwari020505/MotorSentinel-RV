@@ -11,9 +11,12 @@ rather than a blank Libero project. The initial reproducible baseline is:
 
 ## Proposed connection
 
-Package `motorsentinel_core_apb` (Milestone 3 integrated data plane) as a user
-HDL+ component with an APB3 bus interface. `motorsentinel_guard_apb` remains
-available as a smaller safety-kernel-only build. Connect it to unused CoreAPB3 slot 6 in the reference design, giving
+Package `motorsentinel_top` (Milestone 4: ADXL345 reader plus the integrated
+data plane) as a user HDL+ component with an APB3 bus interface. Its SCL and
+SDA are open-drain: drive each fabric BIBUF with `D` tied low and `E` from
+`*_drive_low_o`, and return `Y` to `*_i`. `motorsentinel_core_apb` (no
+acquisition) and `motorsentinel_guard_apb` (safety kernel only) remain
+available as smaller builds. Connect it to unused CoreAPB3 slot 6 in the reference design, giving
 a provisional MSS-visible range of `0x4000_0600` through `0x4000_06ff`. The
 address is not authoritative until SmartDesign memory-map DRC passes and the
 generated map is reflected in Linux software.

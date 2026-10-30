@@ -78,9 +78,12 @@
 #define MSRV_REG_Q(n)             (UINT32_C(0xc0) + 4u * (uint32_t)(n))
 #define MSRV_REG_Y(n)             (UINT32_C(0xd0) + 4u * (uint32_t)(n))
 #define MSRV_REG_H(n)             (UINT32_C(0xe0) + 4u * (uint32_t)(n))
+#define MSRV_REG_ACQ_STATUS       UINT32_C(0xe8)
+#define MSRV_REG_ACQ_SAMPLES      UINT32_C(0xec)
 
 #define MSRV_CORE_ID_VALUE        UINT32_C(0x4d530300)
 #define MSRV_CORE_CONTROL_INJECT  (UINT32_C(1) << 0)
+#define MSRV_CORE_CONTROL_DRDY    (UINT32_C(1) << 1)
 
 #define MSRV_MODEL_CMD_BEGIN      (UINT32_C(1) << 0)
 #define MSRV_MODEL_CMD_COMMIT     (UINT32_C(1) << 1)
@@ -110,6 +113,13 @@
 #define MSRV_INFERENCE_FROZEN        (UINT32_C(1) << 16)
 #define MSRV_INFERENCE_BUSY          (UINT32_C(1) << 17)
 #define MSRV_INFERENCE_DATAPATH_READY (UINT32_C(1) << 20)
+
+#define MSRV_ACQ_DEVICE_ID(v)     ((uint32_t)(v) & UINT32_C(0xff))
+#define MSRV_ACQ_CONFIGURED       (UINT32_C(1) << 8)
+#define MSRV_ACQ_ID_ERROR         (UINT32_C(1) << 9)
+#define MSRV_ACQ_DRDY_MODE        (UINT32_C(1) << 10)
+#define MSRV_ACQ_BUS_OWNED        (UINT32_C(1) << 11)
+#define MSRV_ACQ_NACK_COUNT(v)    ((uint32_t)(v) >> 16)
 
 #define MSRV_LATENCY_LAST(v)      ((uint32_t)(v) & UINT32_C(0xffff))
 #define MSRV_LATENCY_MAX(v)       ((uint32_t)(v) >> 16)

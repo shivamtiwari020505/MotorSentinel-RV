@@ -13,10 +13,11 @@ comparison path without being part of the time-critical motor-disable path.
 
 ## Highlights
 
-- **Full sample-to-motor data path in fabric.** Accelerometer samples pass
-  through sensor-integrity checks, a bit-exact 16-feature extractor, an INT8
-  normalizer and the EdgeMatrix-RV autoencoder on an 8x8 systolic array, then
-  reach a latched hardware safety policy. Linux is never in the trip path.
+- **Pins to motor in fabric.** An ADXL345 I2C reader feeds sensor-integrity
+  checks, a bit-exact 16-feature extractor, an INT8 normalizer and the
+  EdgeMatrix-RV autoencoder on an 8x8 systolic array, which reach a latched
+  hardware safety policy driving the motor-enable pin. Linux is never in the
+  trip path.
 - **Learned plus non-learned defenses.** The autoencoder catches mechanical
   faults, bias and noise. A hardware rolling-hash replay detector catches the
   attack a learned model cannot see: replayed *healthy* data.
@@ -54,7 +55,8 @@ The full table, method and verification boundary are in
 | [1](docs/milestone-1.md) | APB safety kernel: protocol guard, latched fault provenance, recovery interlock, explicit arm/disarm | 30 self-checks |
 | [2](docs/milestone-2.md) | 256-sample/128-hop feature extractor, [bit-exact contract](docs/feature-contract.md) | 112 features bit-exact |
 | [3](docs/milestone-3.md) | EdgeMatrix-RV autoencoder, CRC-checked model store, sensor-integrity monitor, integrated `motorsentinel_core_apb` | 96 inferences and 9 scenarios bit-exact |
-| Next | ADXL345 I2C sequencer, Libero Tcl overlay, Linux UIO driver, board measurements | - |
+| [4](docs/milestone-4.md) | ADXL345 I2C reader (Fast-mode, clock stretching, DATA_READY, NACK recovery) and pins-to-motor `motorsentinel_top` | I2C timing verified; window scores from the I2C pins bit-exact |
+| Next | Libero Tcl overlay, Linux UIO driver, board measurements | - |
 
 The [APB register map](docs/register-map.md) defines the control plane, and the
 [Icicle integration baseline](docs/icicle-integration.md) pins the intended
@@ -77,9 +79,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_rtl_tests.ps1
 ```
 
 The test runs the Python unit tests, regenerates deterministic golden vectors,
-and runs four self-checking RTL simulations: the safety kernel, the feature
-extractor, the EdgeMatrix-RV inference engine and the end-to-end attack
-scenarios. Use `make waves`, `make feature-waves` or `make core-waves` for
+and runs six self-checking RTL simulations: the safety kernel, the feature
+extractor, the EdgeMatrix-RV inference engine, the end-to-end attack
+scenarios, the ADXL345 I2C reader and the pins-to-motor integration. Use `make waves`, `make feature-waves` or `make core-waves` for
 waveforms, or add `-Waves` to the PowerShell command. GitHub Actions runs the
 same regression on every push and pull request. The regression needs only the
 Python standard library; `make train` retrains the committed model offline and
@@ -109,8 +111,8 @@ docs/      architecture, interfaces, and proposal artifacts
 6. Report events to Linux while the FPGA can disable the low-voltage
    demonstration motor independently.
 
-Steps 2-6 are implemented and verified in RTL simulation. Step 1's protocol
-monitoring is implemented; the ADXL345 acquisition sequencer is next.
+All six steps are implemented and verified in RTL simulation, from the
+ADXL345's I2C pins to the motor-enable output.
 
 ## System architecture
 

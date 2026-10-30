@@ -65,7 +65,7 @@ and bit 7 by a dropped (overrun) sample.
 | Offset | Name | Access | Definition |
 | ---: | --- | --- | --- |
 | `0x40` | `CORE_ID` | RO | `0x4d53_0300` (data plane v3.0) |
-| `0x44` | `CORE_CONTROL` | RW | bit 0 sample source: 0 = acquisition port, 1 = APB injection |
+| `0x44` | `CORE_CONTROL` | RW | bit 0 sample source: 0 = acquisition port, 1 = APB injection; bit 1 ADXL345 trigger: 1 = DATA_READY on INT1 (reset), 0 = internal 800 Hz timer |
 | `0x48` | `INJECT_XY` | RW | `[15:0]` X and `[31:16]` Y of the next injected sample |
 | `0x4c` | `INJECT_Z` | WO | `[15:0]` Z; the write pushes one injected sample |
 | `0x50` | `MODEL_CMD` | W1P | bit 0 begin load (invalidates model), bit 1 commit |
@@ -84,6 +84,8 @@ and bit 7 by a dropped (overrun) sample.
 | `0xc0`-`0xcc` | `Q[0..3]` | RO | 16 normalized INT8 inputs, four per word, lane 0 in bits `[7:0]` |
 | `0xd0`-`0xdc` | `Y[0..3]` | RO | 16 INT8 reconstructions, packed as `Q` |
 | `0xe0`-`0xe4` | `H[0..1]` | RO | 8 INT8 hidden activations, packed as `Q` |
+| `0xe8` | `ACQ_STATUS` | RO | ADXL345 reader: `[7:0]` DEVID read, 8 configured, 9 DEVID error, 10 DATA_READY mode, 11 bus owned, `[31:16]` NACK count (`motorsentinel_top` only) |
+| `0xec` | `ACQ_SAMPLES` | RO | samples acquired since reset (`motorsentinel_top` only) |
 
 Default integrity limits after reset: range 4000 LSB, slew 1024 LSB, frozen
 run 32 samples, replay threshold 16 hits per block.

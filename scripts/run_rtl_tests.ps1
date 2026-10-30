@@ -79,3 +79,11 @@ Invoke-RtlTest "tb_edgematrix_inference" `
     ($engineRtl + @("tb/tb_edgematrix_inference.sv")) $quiet
 Invoke-RtlTest "tb_motorsentinel_core" `
     ($coreRtl + @("tb/tb_motorsentinel_core.sv")) $quiet
+
+$readerRtl = @("rtl/motorsentinel_adxl345_reader.sv")
+$sensorModel = @("tb/adxl345_i2c_model.sv")
+Invoke-RtlTest "tb_adxl345_reader" `
+    ($readerRtl + $sensorModel + @("tb/tb_adxl345_reader.sv")) $quiet
+Invoke-RtlTest "tb_motorsentinel_top" `
+    ($coreRtl + $readerRtl + @("rtl/motorsentinel_top.sv") + $sensorModel +
+     @("tb/tb_motorsentinel_top.sv")) $quiet

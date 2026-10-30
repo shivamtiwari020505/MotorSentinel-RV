@@ -86,7 +86,11 @@ module tb_motorsentinel_core;
         .sample_z_i          (sample_z),
         .motor_enable_o      (motor_enable),
         .fault_led_o         (fault_led),
-        .irq_o               (irq)
+        .irq_o               (irq),
+        .enable_o            (),
+        .acq_use_drdy_o      (),
+        .acq_status_i        (32'd0),
+        .acq_samples_i       (32'd0)
     );
 
     logic [31:0] image    [0:IMAGE_WORDS-1];
