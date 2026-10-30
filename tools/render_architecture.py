@@ -125,8 +125,7 @@ def render(output_dir: Path) -> None:
            "RISC-V MSS — Linux control plane (outside the safety path)", BLUE, size=14)
 
     # Fabric blocks: acquisition | integrity + features | model + inference | policy.
-    box(ax, 0.27, 0.56, 0.18, 0.12, "I2C Acquisition", ("ADXL345 sequencer", "next milestone"),
-        planned=True)
+    box(ax, 0.27, 0.56, 0.18, 0.12, "I2C Acquisition", ("ADXL345, 400 kHz", "DATA_READY bursts"))
     box(ax, 0.27, 0.35, 0.18, 0.12, "Protocol Guard", ("stuck bus, stalls", "NACK storm"))
     box(ax, 0.50, 0.56, 0.22, 0.12, "Integrity Monitor", ("range · slew · frozen", "replay (rolling hash)"),
         edge=GOLD, fill=GOLD_FILL)
