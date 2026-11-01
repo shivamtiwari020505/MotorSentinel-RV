@@ -20,7 +20,7 @@ IVERILOG := iverilog -g2012 -Wall -Wno-sensitivity-entire-array
 
 .PHONY: test python-test guard-test feature-test inference-test core-test \
 	reader-test top-test feature-vectors system-vectors waves feature-waves \
-	core-waves train clean
+	core-waves train libero clean
 
 test: python-test guard-test feature-test inference-test core-test reader-test top-test
 
@@ -56,6 +56,13 @@ top-test: system-vectors build/tb_motorsentinel_top.vvp
 # Offline: retrains the committed model (requires NumPy).
 train:
 	$(PYTHON) tools/train_autoencoder.py
+
+# Requires Libero SoC with a license covering MPFS250T; not part of `test`.
+LIBERO ?= libero
+libero:
+	mkdir -p build/libero
+	$(LIBERO) SCRIPT:fpga/libero/build_motorsentinel.tcl LOGFILE:build/libero/libero.log
+	$(PYTHON) tools/libero_report.py --build-dir build/libero
 
 waves:
 	mkdir -p build

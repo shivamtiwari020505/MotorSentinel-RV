@@ -39,6 +39,9 @@ The onboard power monitor is a **PAC1934T-I/JQ** on MSS I2C1. That bus should be
 preserved for CPU-versus-FPGA power measurements. The older proposal diagram's
 `AC1934` label is a documentation typo; it is not a different device.
 
+The standalone fabric build that precedes this overlay is described in
+[Libero build](libero-build.md).
+
 ## Reproducibility rules
 
 1. Express SmartDesign changes as Tcl overlay scripts; do not rely on GUI-only

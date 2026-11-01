@@ -56,7 +56,8 @@ The full table, method and verification boundary are in
 | [2](docs/milestone-2.md) | 256-sample/128-hop feature extractor, [bit-exact contract](docs/feature-contract.md) | 112 features bit-exact |
 | [3](docs/milestone-3.md) | EdgeMatrix-RV autoencoder, CRC-checked model store, sensor-integrity monitor, integrated `motorsentinel_core_apb` | 96 inferences and 9 scenarios bit-exact |
 | [4](docs/milestone-4.md) | ADXL345 I2C reader (Fast-mode, clock stretching, DATA_READY, NACK recovery) and pins-to-motor `motorsentinel_top` | I2C timing verified; window scores from the I2C pins bit-exact |
-| Next | Libero Tcl overlay, Linux UIO driver, board measurements | - |
+| [Libero](docs/libero-build.md) | Scripted Libero SoC build of `motorsentinel_top` for MPFS250T: synthesis, place and route, timing | script dry-run checked; first Libero run pending |
+| Next | Icicle reference-design overlay, Linux UIO driver, board measurements | - |
 
 The [APB register map](docs/register-map.md) defines the control plane, and the
 [Icicle integration baseline](docs/icicle-integration.md) pins the intended
@@ -87,12 +88,19 @@ same regression on every push and pull request. The regression needs only the
 Python standard library; `make train` retrains the committed model offline and
 requires NumPy.
 
+## Build with Libero SoC
+
+`scripts/run_libero.ps1` (Windows) or `make libero` (Linux) builds the fabric
+data plane for the Icicle Kit's MPFS250T and summarizes utilization and
+timing. See [Libero build](docs/libero-build.md).
+
 ## Repository layout
 
 ```text
 rtl/       synthesizable SystemVerilog
 tb/        self-checking testbenches
-scripts/   local verification entry points
+scripts/   local verification and Libero entry points
+fpga/      Libero build script and timing constraints
 sw/        RISC-V software interface definitions
 model/     bit-exact Python reference models, motor simulator, trained weights
 tools/     vector generation, model training and diagram rendering
