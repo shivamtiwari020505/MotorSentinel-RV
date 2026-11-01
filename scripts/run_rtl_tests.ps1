@@ -87,3 +87,29 @@ Invoke-RtlTest "tb_adxl345_reader" `
 Invoke-RtlTest "tb_motorsentinel_top" `
     ($coreRtl + $readerRtl + @("rtl/motorsentinel_top.sv") + $sensorModel +
      @("tb/tb_motorsentinel_top.sv")) $quiet
+
+# C driver: host unit tests, then its register traffic replayed on the RTL.
+$driverDir = Join-Path $buildDir "sw\host"
+$driverTest = Join-Path $driverDir "test_motorsentinel.exe"
+$modelBin = Join-Path $buildDir "motorsentinel_ae_v1.bin"
+New-Item -ItemType Directory -Force -Path $driverDir | Out-Null
+Push-Location $repoRoot
+try {
+    Invoke-Checked "Model export" {
+        & python tools/export_model_bin.py --output $modelBin
+    }
+    Invoke-Checked "C driver build" {
+        & gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror -Isw/include `
+            -o $driverTest sw/tests/test_motorsentinel.c sw/lib/motorsentinel.c
+    }
+    $expectedCrc = (Get-Content (Join-Path $buildDir "system_config.hex") -TotalCount 1).Trim()
+    Invoke-Checked "C driver unit tests" { & $driverTest $modelBin $expectedCrc }
+    Invoke-Checked "C driver trace" {
+        & $driverTest --trace (Join-Path $buildDir "driver_trace.txt") $modelBin `
+            (Join-Path $buildDir "system_samples.hex") 384
+    }
+}
+finally {
+    Pop-Location
+}
+Invoke-RtlTest "tb_driver_replay" ($coreRtl + @("tb/tb_driver_replay.sv")) $quiet

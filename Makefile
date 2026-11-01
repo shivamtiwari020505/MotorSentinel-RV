@@ -19,10 +19,11 @@ PYTHON ?= python3
 IVERILOG := iverilog -g2012 -Wall -Wno-sensitivity-entire-array
 
 .PHONY: test python-test guard-test feature-test inference-test core-test \
-	reader-test top-test feature-vectors system-vectors waves feature-waves \
-	core-waves train libero clean
+	reader-test top-test driver-test feature-vectors system-vectors waves \
+	feature-waves core-waves train libero clean
 
-test: python-test guard-test feature-test inference-test core-test reader-test top-test
+test: python-test guard-test feature-test inference-test core-test reader-test top-test \
+	driver-test
 
 python-test:
 	$(PYTHON) -m unittest discover -s tests -v
@@ -52,6 +53,17 @@ reader-test: build/tb_adxl345_reader.vvp
 
 top-test: system-vectors build/tb_motorsentinel_top.vvp
 	vvp build/tb_motorsentinel_top.vvp
+
+# C driver: host unit tests, then its recorded register traffic replayed
+# against the RTL.
+DRIVER_TEST := build/sw/host/test_motorsentinel
+driver-test: system-vectors build/tb_driver_replay.vvp
+	$(PYTHON) tools/export_model_bin.py --output build/motorsentinel_ae_v1.bin
+	$(MAKE) -C sw test BUILD=../build/sw/host
+	$(DRIVER_TEST) build/motorsentinel_ae_v1.bin $$(head -n 1 build/system_config.hex)
+	$(DRIVER_TEST) --trace build/driver_trace.txt build/motorsentinel_ae_v1.bin \
+		build/system_samples.hex 384
+	vvp build/tb_driver_replay.vvp
 
 # Offline: retrains the committed model (requires NumPy).
 train:
@@ -102,6 +114,10 @@ build/tb_adxl345_reader.vvp: $(READER_RTL) $(SENSOR_MODEL) tb/tb_adxl345_reader.
 build/tb_motorsentinel_top.vvp: $(TOP_RTL) $(SENSOR_MODEL) tb/tb_motorsentinel_top.sv
 	mkdir -p build
 	$(IVERILOG) -s tb_motorsentinel_top -o $@ $(TOP_RTL) $(SENSOR_MODEL) tb/tb_motorsentinel_top.sv
+
+build/tb_driver_replay.vvp: $(CORE_RTL) tb/tb_driver_replay.sv
+	mkdir -p build
+	$(IVERILOG) -s tb_driver_replay -o $@ $(CORE_RTL) tb/tb_driver_replay.sv
 
 clean:
 	rm -rf build

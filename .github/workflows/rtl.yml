@@ -12,7 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Icarus Verilog
-        run: sudo apt-get update && sudo apt-get install -y iverilog
-      - name: Run Python and self-checking RTL regressions
+      - name: Install Icarus Verilog, RISC-V GCC and the device-tree compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog gcc-riscv64-linux-gnu device-tree-compiler
+      - name: Run Python, RTL and C driver regressions
         run: make test
+      - name: Build the Linux driver natively and for RISC-V Linux
+        run: |
+          make -C sw all
+          make -C sw all CROSS_COMPILE=riscv64-linux-gnu-
+          file build/sw/riscv64-linux-gnu/msrvctl | tee /dev/stderr | grep -q "RISC-V"
+      - name: Compile the device-tree overlay (syntax check, example PLIC source)
+        run: make -C sw dtbo PLIC_IRQ=0x80

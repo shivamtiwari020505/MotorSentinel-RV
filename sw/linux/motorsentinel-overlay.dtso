@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+//
+// Device-tree overlay binding the MotorSentinel-RV fabric core to Linux UIO.
+//
+// Build with `make -C sw dtbo PLIC_IRQ=<n>`, where <n> is the PLIC source
+// number of the MSS_INT_F2M line that carries irq_o in the integrated design.
+// Load uio_pdrv_genirq with the matching compatible string, for example on
+// the kernel command line:
+//   uio_pdrv_genirq.of_id=shivamtiwari020505,motorsentinel-rv
+//
+// The address is the provisional CoreAPB3 slot 6 range on FIC3; confirm it
+// against the SmartDesign memory map before deploying.
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+    motorsentinel: motorsentinel@40000600 {
+        compatible = "shivamtiwari020505,motorsentinel-rv";
+        reg = <0x0 0x40000600 0x0 0x100>;
+        interrupt-parent = <&plic>;
+        interrupts = <MSRV_PLIC_IRQ>;
+        status = "okay";
+    };
+};

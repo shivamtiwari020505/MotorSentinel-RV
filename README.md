@@ -57,7 +57,8 @@ The full table, method and verification boundary are in
 | [3](docs/milestone-3.md) | EdgeMatrix-RV autoencoder, CRC-checked model store, sensor-integrity monitor, integrated `motorsentinel_core_apb` | 96 inferences and 9 scenarios bit-exact |
 | [4](docs/milestone-4.md) | ADXL345 I2C reader (Fast-mode, clock stretching, DATA_READY, NACK recovery) and pins-to-motor `motorsentinel_top` | I2C timing verified; window scores from the I2C pins bit-exact |
 | [Libero](docs/libero-build.md) | Scripted Libero SoC build of `motorsentinel_top` for MPFS250T: synthesis, place and route, timing | script dry-run checked; first Libero run pending |
-| Next | Icicle reference-design overlay, Linux UIO driver, board measurements | - |
+| [Linux](docs/linux-driver.md) | `libmotorsentinel` UIO driver, `msrvctl` tool and device-tree overlay | 23 C checks; driver traffic replayed on the RTL (397 checks, scores bit-exact); RISC-V cross-build in CI |
+| Next | Icicle reference-design overlay, board bring-up and measurements | - |
 
 The [APB register map](docs/register-map.md) defines the control plane, and the
 [Icicle integration baseline](docs/icicle-integration.md) pins the intended
@@ -80,9 +81,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_rtl_tests.ps1
 ```
 
 The test runs the Python unit tests, regenerates deterministic golden vectors,
-and runs six self-checking RTL simulations: the safety kernel, the feature
+and runs seven self-checking RTL simulations: the safety kernel, the feature
 extractor, the EdgeMatrix-RV inference engine, the end-to-end attack
-scenarios, the ADXL345 I2C reader and the pins-to-motor integration. Use `make waves`, `make feature-waves` or `make core-waves` for
+scenarios, the ADXL345 I2C reader, the pins-to-motor integration and the
+C driver's register traffic replayed against the RTL. It also runs the C
+driver's unit tests; CI additionally cross-compiles the driver for RISC-V
+Linux. Use `make waves`, `make feature-waves` or `make core-waves` for
 waveforms, or add `-Waves` to the PowerShell command. GitHub Actions runs the
 same regression on every push and pull request. The regression needs only the
 Python standard library; `make train` retrains the committed model offline and
@@ -101,7 +105,7 @@ rtl/       synthesizable SystemVerilog
 tb/        self-checking testbenches
 scripts/   local verification and Libero entry points
 fpga/      Libero build script and timing constraints
-sw/        RISC-V software interface definitions
+sw/        Linux UIO driver library, msrvctl, device-tree overlay, C tests
 model/     bit-exact Python reference models, motor simulator, trained weights
 tools/     vector generation, model training and diagram rendering
 tests/     analytic reference-model tests
